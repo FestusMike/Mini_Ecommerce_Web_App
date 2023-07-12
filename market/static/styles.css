@@ -1,0 +1,19 @@
+body {
+    background-color: #212121;
+    color: white;
+}
+.mb-4 {
+    width: 160px;
+    height: 100px;
+    margin-left: 0px;
+    margin-top: 10px;
+}
+
+
+.profile-picture img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+

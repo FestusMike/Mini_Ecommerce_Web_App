@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %} Advertise Your Commodity {% endblock %}
+
+{% block content %}
+<body class="text-center">
+    <div class="container">
+        <form method="POST" class="form-register">
+            {{ form.hidden_tag() }}
+        <img class="mb-4" src="{{ url_for ('static', filename='images/cart.png') }}" alt="">
+        <h1 class="h3 mb-3 font-weight-normal">
+            Feel Free to Place your Advert
+        </h1>
+        <br>
+        {{ form.name.label() }}
+        {{ form.name(class='form-control', placeholder='Name of Item') }}
+    
+        {{ form.price.label() }}
+        {{ form.price(class='form-control', placeholder='Item Price') }}
+
+        {{ form.barcode.label() }}
+        {{ form.barcode(class='form-control', placeholder='Enter Item Barcode') }}
+
+        {{ form.description.label() }}
+        {{ form.description(class='form-control', placeholder='Say More about this item') }}
+
+        <br>
+        {{ form.submit(class='btn btn-lg btn-block btn-primary') }}
+
+    </form>
+    </div>     
+</body>
+{% endblock %}
