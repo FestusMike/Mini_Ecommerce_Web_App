@@ -1,5 +1,4 @@
 from market import db, login_manager
-from market import bcrypt
 from flask_login import UserMixin
 from datetime import datetime
 
@@ -16,7 +15,6 @@ class User(db.Model, UserMixin):
     items = db.relationship('Item', backref='owned_user', lazy=True)
     token = db.Column(db.Integer(), nullable=True)
     token_expiration = db.Column(db.DateTime, default=datetime.utcnow)
-    picture = db.Column(db.String(length=299), default='No Picture Provided')
     
     @property
     def prettier_budget(self):
@@ -24,17 +22,7 @@ class User(db.Model, UserMixin):
             return f'{str(self.budget)[:-3]},{str(self.budget)[-3:]} NGN'
         else:
             return f'{self.budget} NGN'
-    @property
-    def password(self):
-        return self.password
-
-    @password.setter
-    def password(self, plain_text_password):
-        self.password_hash = bcrypt.generate_password_hash(plain_text_password).decode('utf-8')
-
-    def check_password_correction(self, attempted_password):
-        return bcrypt.check_password_hash(self.password_hash, attempted_password)
-
+    
     def can_purchase(self, item_obj):
         return self.budget >= item_obj.price
     
@@ -60,4 +48,8 @@ class Item(db.Model):
      def sell(self, user):
         self.owner = None
         user.budget += self.price
+        db.session.commit()
+
+     def create(self, user):
+        self.owner = user.id
         db.session.commit()

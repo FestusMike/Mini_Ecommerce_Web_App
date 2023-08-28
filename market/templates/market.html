@@ -23,19 +23,20 @@ Market Page
          <tbody>
             <!-- Your rows inside the table HERE: -->
             {% for item in items %}
-            {% include 'includes/modals.html' %}
+            {% include 'includes/modals.html' %} 
             <tr>
-               <td>{{ item.id }}</td>
-               <td>{{ item.name }}</td>
-               <td>{{ item.barcode }}</td>
-               <td>{{ item.price }}NGN</td>
-               <td>
-                  <button class="btn btn-outline btn-info" data-toggle="modal" data-target="#Modal-MoreInfo-{{ item.id }}">More Info</button>
-                  <button class="btn btn-outline btn-success" data-toggle="modal" data-target="#Modal-PurchaseConfirm-{{ item.id }}">Purchase this Item</button>
-               </td>
+                <td>{{ item.id }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.barcode }}</td>
+                <td>{{ item.price }}NGN</td>
+                <td>
+                    <button class="btn btn-outline btn-info" data-toggle="modal" data-target="#Modal-MoreInfo-{{ item.id }}">More Info</button>
+                    <button class="btn btn-outline btn-success" data-toggle="modal" data-target="#Modal-PurchaseConfirm-{{ item.id }}">Purchase this Item</button>
+                    
+                </td>
             </tr>
             {% endfor %}
-         </tbody>
+        </tbody>
       </table>
    </div>
    <div class="col-4">
