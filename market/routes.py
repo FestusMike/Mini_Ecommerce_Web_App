@@ -15,9 +15,11 @@ def home():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()
+    
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         email = User.query.filter_by(email_address=form.email_address.data).first()
+
         if user and email:
             flash('The provided username and e-mail address already exist in our database', category='danger')
         elif user:
@@ -25,28 +27,37 @@ def register():
         elif email:
             flash('User with the same email already exists', category='danger')
         else:
-            user_to_create = User(username=form.username.data,
-                              email_address=form.email_address.data,
-                              password_hash=bcrypt.generate_password_hash(form.password1.data).decode('utf-8')
-                            ) 
-        
+            user_to_create = User(
+                username=form.username.data,
+                email_address=form.email_address.data,
+                password_hash=bcrypt.generate_password_hash(form.password1.data).decode('utf-8')
+            ) 
+
             db.session.add(user_to_create)
             db.session.commit()
-        
-            msg = Message(f"Thanks For Joining Us",
-                         sender= 'noreply@ecommerce.com',
-                        recipients=[user_to_create.email_address])
-            msg.html = f"""Hello {user_to_create.username}, <p>We are happy to welcome you aboard. We wish you a happy shopping spree.
-                         Kindly note that this is a virtually generated e-mail address and we can\'t be contacted through this medium. To message us, send us
-                         an email on festusmike30@yahoo.com. Thank You.</p>"""
-        # Send the email
-            mail.send(msg)
+
+            try:
+                msg = Message(
+                    subject="Thanks For Joining Us",
+                    sender='noreply@ecommerce.com',
+                    recipients=[user_to_create.email_address]
+                )
+                msg.html = f"""Hello {user_to_create.username}, <p>We are happy to welcome you aboard. We wish you a happy shopping spree.
+                             Kindly note that this is a virtually generated e-mail address and we can\'t be contacted through this medium. To message us, send us
+                             an email on festusmike30@yahoo.com. Thank You.</p>"""
+                mail.send(msg)
+            except Exception as e:
+                app.logger.error(f"Error sending email to {user_to_create.email_address}: {str(e)}")
+                flash("An error occurred while sending the welcome email. Please contact support.", category='danger')
+
             login_user(user_to_create)
-            flash(f'Account Created Successfully, You are now logged in as: {user_to_create.username}; Enjoy your Shopping Spree', category='success')
+            flash(f'Account Created Successfully, You are now logged in as: {user_to_create.username}. Enjoy your Shopping Spree', category='success')
             return redirect(url_for('market_page'))
-    if form.errors != {}:   
+
+    if form.errors != {}:
         for err_msg in form.errors.values():
             flash(f'{err_msg}', category='danger')
+
     return render_template('register.html', form=form)
 
 
@@ -80,27 +91,40 @@ def GenerateOTP():
 @app.route('/getOTP', methods=['GET', 'POST'])
 def password_reset_otp():
     form = ResetPassword()
+
     if form.validate_on_submit():
         user = User.query.filter_by(email_address=form.email_address.data).first()
-        if user:
-            token = GenerateOTP()
-            token_expiration = datetime.now() + timedelta(minutes=10)
-            user.token = token
-            user.token_expiration = token_expiration
-            db.session.commit()
 
-            otp_msg = Message(f"Password Reset Token",
-                        sender= 'noreply@fakeshoprite.com',
-                       recipients=[user.email_address])
-            otp_msg.html = f"""<p> Your Password Reset OTP is {user.token}.</p>"""
-        # Send the email
-            mail.send(otp_msg)
-            flash(f'A password reset OTP has been sent to {user.email_address}, kindly check your inbox or spam folder.', category='info')
+        if user:
+            try:
+                token = GenerateOTP()
+                token_expiration = datetime.now() + timedelta(minutes=10)
+                user.token = token
+                user.token_expiration = token_expiration
+                db.session.commit()
+
+                otp_msg = Message(
+                    subject="Password Reset Token",
+                    sender='noreply@fakeshoprite.com',
+                    recipients=[user.email_address]
+                )
+                otp_msg.html = f"""<p>Your Password Reset OTP is {user.token}.</p>"""
+
+                # Send the email
+                mail.send(otp_msg)
+            except Exception as e:
+            
+                app.logger.error(f"Error sending OTP email to {user.email_address}: {str(e)}")
+                flash("An error occurred while sending the OTP email. Please contact support.", category='danger')
+
+            flash(f'A password reset OTP has been sent to {user.email_address}. Kindly check your inbox or spam folder.', category='info')
             return redirect(url_for('enter_otp'))
         else:
-            flash('No Record of your e-mail Address in our database. Kindly register with us.', category='danger')
-            return redirect(url_for('register'))   
+            flash('No record of your e-mail address in our database. Kindly register with us.', category='danger')
+            return redirect(url_for('register'))
+
     return render_template('get_otp.html', form=form)
+
 
 #Entering the OTP sent to your email
 @app.route('/enterOTP', methods=['GET', 'POST'])
@@ -139,35 +163,51 @@ def reset_password():
     return render_template('reset_password.html', form=form)
 
 #This function creates a new advert
+from flask import current_app
+
 @app.route('/advert', methods=['GET', 'POST'])
 @login_required
 def create_advert():
     form = CreateAdvert()
+
     if form.validate_on_submit():
         barcode_check = Item.query.filter_by(barcode=form.barcode.data).first()
-        if barcode_check:
-            flash(f'An item with the barcode {barcode_check.barcode} already exists. Kindly re-confirm barcode', category='danger')
-        else:
-            item_to_create = Item(name=form.name.data, 
-                              price=form.price.data,
-                              barcode=form.barcode.data,
-                              description=form.description.data)
-            item_to_create.create(current_user)
-            db.session.add(item_to_create)
-            db.session.commit()
 
-            msg = Message(f"Notice of Advert Placement",
-                      sender='noreply@ecommerce.com',
-                      recipients=[current_user.email_address])
-            msg.html = f"""<p>Hello {current_user.username}, Congratulations, Your Advert has been Successfully Placed on the Market. Please be informed that your commodity might be taken down if any fraudulent activity is discovered.
-                    Kindly note that this is a virtually generated e-mail address and we can't be contacted through this medium. To message us, send us
-                    an email on festusmike30@yahoo.com. Thank You.</p>"""
-        
-        # Send the email
-            mail.send(msg)
-            flash(f'Your advert has been successfully placed.', category='success')
+        if barcode_check:
+            flash(f'An item with the barcode {barcode_check.barcode} already exists. Kindly re-confirm the barcode.', category='danger')
+        else:
+            try:
+                item_to_create = Item(
+                    name=form.name.data,
+                    price=form.price.data,
+                    barcode=form.barcode.data,
+                    description=form.description.data
+                )
+                item_to_create.create(current_user)
+                db.session.add(item_to_create)
+                db.session.commit()
+
+                msg = Message(
+                    subject="Notice of Advert Placement",
+                    sender='noreply@ecommerce.com',
+                    recipients=[current_user.email_address]
+                )
+                msg.html = f"""<p>Hello {current_user.username}, Congratulations, Your Advert has been Successfully Placed on the Market. Please be informed that your commodity might be taken down if any fraudulent activity is discovered.
+                        Kindly note that this is a virtually generated e-mail address and we can't be contacted through this medium. To message us, send us
+                        an email on festusmike30@yahoo.com. Thank You.</p>"""
+
+                # Send the email
+                mail.send(msg)
+            except Exception as e:
+                
+                app.logger.error(f"Error sending advert placement email to {current_user.email_address}: {str(e)}")
+                flash("An error occurred while sending the advert placement email. Please contact support.", category='danger')
+
+            flash('Your advert has been successfully placed.', category='success')
             return redirect(url_for('market_page'))
+
     return render_template('create_advert.html', form=form)
+
 @app.route('/market', methods=['GET', 'POST'])
 @login_required
 def market_page():

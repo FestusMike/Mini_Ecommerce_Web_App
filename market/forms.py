@@ -8,7 +8,7 @@ def check_alphanum(form, field):
         raise ValidationError('Password must contain both alphabets and digits')
 
 class RegisterForm(FlaskForm):
-    username = StringField(label='User Name:', validators=[Length(min=2, max=30), DataRequired()])
+    username = StringField(label='User Name:', validators=[Length(min=10, max=30, message='Username must be between 10 and 30'), DataRequired()])
     email_address = StringField(label='E-mail Address:', validators=[Email(), DataRequired()])
     password1 = PasswordField(label='Password:', validators=[Length(min=6), DataRequired(), check_alphanum])
     password2 = PasswordField(label='Confirm Password:', validators=[EqualTo('password1'), DataRequired()])

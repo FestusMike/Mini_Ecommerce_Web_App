@@ -13,7 +13,7 @@ Market Page
          <thead>
             <tr>
                <!-- Your Columns HERE -->
-               <th scope="col">ID</th>
+               
                <th scope="col">Name</th>
                <th scope="col">Barcode</th>
                <th scope="col">Price</th>
@@ -25,7 +25,7 @@ Market Page
             {% for item in items %}
             {% include 'includes/modals.html' %} 
             <tr>
-                <td>{{ item.id }}</td>
+            
                 <td>{{ item.name }}</td>
                 <td>{{ item.barcode }}</td>
                 <td>{{ item.price }}NGN</td>

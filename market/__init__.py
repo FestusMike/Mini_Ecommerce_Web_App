@@ -6,7 +6,14 @@ from flask_mail import Mail
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://root:Timi1234@localhost/market'
+
+SQLALCHEMY_DATABASE_URI = "mysql+mysqldb://{username}:{password}@{hostname}/{databasename}".format(
+    username="root",
+    password="Timi1234",
+    hostname="localhost",
+    databasename="market"
+)
+app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SECRET_KEY'] = '78d78d45a2c97b1911b1801e'
 app.config['MAIL_SERVER'] = 'sandbox.smtp.mailtrap.io'
 app.config['MAIL_PORT'] = 2525
@@ -29,6 +36,6 @@ with app.app_context():
 
 from market import routes
 
-
 if __name__ == '__main__':
-    app.run(debug=True)
+	app.run(debug=True)
+
