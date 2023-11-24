@@ -163,7 +163,6 @@ def reset_password():
     return render_template('reset_password.html', form=form)
 
 #This function creates a new advert
-from flask import current_app
 
 @app.route('/advert', methods=['GET', 'POST'])
 @login_required
