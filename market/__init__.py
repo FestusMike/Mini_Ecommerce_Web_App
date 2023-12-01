@@ -3,22 +3,23 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_mail import Mail
-
+import os
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 
 SQLALCHEMY_DATABASE_URI = "mysql+mysqldb://{username}:{password}@{hostname}/{databasename}".format(
-    username="root",
-    password="Timi1234",
-    hostname="localhost",
-    databasename="market"
+    username= os.environ.get('MYSQL_USER'),
+    password= os.environ.get('MYSQL_PASSWORD'),
+    hostname= os.environ.get('MYSQL_HOST'),
+    databasename= os.environ.get('MYSQL_DB')
 )
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-app.config['SECRET_KEY'] = '78d78d45a2c97b1911b1801e'
-app.config['MAIL_SERVER'] = 'sandbox.smtp.mailtrap.io'
-app.config['MAIL_PORT'] = 2525
-app.config['MAIL_USERNAME'] = '6d4089c7209c16'
-app.config['MAIL_PASSWORD'] = '26f27b6fac36de'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+app.config['MAIL_PORT'] = os.environ.get('MAIL_PORT')
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
@@ -29,10 +30,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
 mail = Mail(app)
-
-
-with app.app_context():
-    db.create_all()
+migrate = Migrate(app, db)
 
 from market import routes
 
