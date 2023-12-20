@@ -1,11 +1,14 @@
 from flask import render_template, redirect, url_for, flash, request
-from market import app, bcrypt, db, mail
+from market import app, bcrypt, db
 from market.models import Item, User
 from market.forms import RegisterForm, LoginForm, PurchaseItemform, SellItemform, ResetPassword, EnterOTP, NewPassword, CreateAdvert
 from flask_login import login_user, logout_user, login_required, current_user
-from flask_mail import Message
 from datetime import datetime, timedelta
 import random, string
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException  
+import os
+
 
 @app.route('/')
 @app.route('/home')
@@ -37,21 +40,32 @@ def register():
             db.session.commit()
 
             try:
-                msg = Message(
-                    subject="Thanks For Joining Us",
-                    sender='noreply@ecommerce.com',
-                    recipients=[user_to_create.email_address]
-                )
-                msg.html = f"""Hello {user_to_create.username}, <p>We are happy to welcome you aboard. We wish you a happy shopping spree.
-                             Kindly note that this is a virtually generated e-mail address and we can\'t be contacted through this medium. To message us, send us
-                             an email on festusmike30@yahoo.com. Thank You.</p>"""
-                mail.send(msg)
-            except Exception as e:
-                app.logger.error(f"Error sending email to {user_to_create.email_address}: {str(e)}")
-                flash("An error occurred while sending the welcome email. Please contact support.", category='danger')
+                # Set up Sendinblue API configuration
+                configuration = sib_api_v3_sdk.Configuration()
+                configuration.api_key['api-key'] = os.environ.get('EMAIL_API_KEY')
+
+                # Create an instance of the Sendinblue TransactionalEmailsApi
+                api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+                # Define email parameters
+                subject = "Welcome to Mini Market!"
+                sender = {"name" : 'Mini Market', "email": os.environ.get('EMAIL_SENDER')}
+                reply_to = {"email": os.environ.get('EMAIL_REPLY_TO')}
+                html_content = f"<html><body><h1>Welcome, {user_to_create.username}!</h1> <p>We are happy to have you here. Welcome Aboard! </p></body></html>"
+                to = [{"email": user_to_create.email_address, "name": user_to_create.username}]
+
+                # Create an instance of SendSmtpEmail
+                send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=to, reply_to=reply_to, html_content=html_content, sender=sender, subject=subject)
+
+                # Send the transactional email
+                api_response = api_instance.send_transac_email(send_smtp_email)
+                print(api_response)
+
+            except ApiException as e:
+                    print("Exception when calling SMTPApi->send_transac_email: %s\n" % e)
 
             login_user(user_to_create)
-            flash(f'Account Created Successfully, You are now logged in as: {user_to_create.username}. Enjoy your Shopping Spree', category='success')
+            flash(f'Account Created Successfully, You are now logged in as: {user_to_create.username}. Enjoy your Shopping Spree. Meanwhile, a welcome message has been sent to {user_to_create.email_address}.', category='success')
             return redirect(url_for('market_page'))
 
     if form.errors != {}:
@@ -91,34 +105,38 @@ def GenerateOTP():
 @app.route('/getOTP', methods=['GET', 'POST'])
 def password_reset_otp():
     form = ResetPassword()
-
     if form.validate_on_submit():
         user = User.query.filter_by(email_address=form.email_address.data).first()
-
         if user:
-            try:
                 token = GenerateOTP()
-                token_expiration = datetime.now() + timedelta(minutes=10)
+                token_expiration = datetime.now() + timedelta(minutes=5)
                 user.token = token
                 user.token_expiration = token_expiration
                 db.session.commit()
-
-                otp_msg = Message(
-                    subject="Password Reset Token",
-                    sender='noreply@fakeshoprite.com',
-                    recipients=[user.email_address]
-                )
-                otp_msg.html = f"""<p>Your Password Reset OTP is {user.token}.</p>"""
-
-                # Send the email
-                mail.send(otp_msg)
-            except Exception as e:
-            
-                app.logger.error(f"Error sending OTP email to {user.email_address}: {str(e)}")
-                flash("An error occurred while sending the OTP email. Please contact support.", category='danger')
-
-            flash(f'A password reset OTP has been sent to {user.email_address}. Kindly check your inbox or spam folder.', category='info')
-            return redirect(url_for('enter_otp'))
+                try:
+                    # Set up Sendinblue API configuration
+                    configuration = sib_api_v3_sdk.Configuration()
+                    configuration.api_key['api-key'] = os.environ.get('EMAIL_API_KEY')
+                    # Create an instance of the Sendinblue TransactionalEmailsApi
+                    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+                    # Define email parameters
+                    subject = "Password Reset Token!"
+                    sender = {"name" : 'Mini Market', "email": os.environ.get('EMAIL_SENDER')}
+                    reply_to = {"email": os.environ.get('EMAIL_REPLY_TO')}
+                    html_content = f"""<html><body><h1>Hi {user.username},</h1> <p>Your Password Reset token is {user.token}. Kindly note that it expires after 5 minutes. If you didn't initiate this action, 
+                    please ignore this message. </p>
+                    <p> Micheal, From Mini Market </p>
+                    </body></html>"""
+                    to = [{"email": user.email_address, "name": user.username}]
+                    #   Create an instance of SendSmtpEmail
+                    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=to, reply_to=reply_to, html_content=html_content, sender=sender, subject=subject)
+                    # Send the transactional email
+                    api_response = api_instance.send_transac_email(send_smtp_email)
+                    print(api_response)
+                    flash(f'A password reset OTP has been sent to {user.email_address}. Kindly check your inbox or spam folder.', category='info')
+                    return redirect(url_for('enter_otp'))
+                except ApiException as e:
+                    print("Exception when calling SMTPApi->send_transac_email: %s\n" % e)
         else:
             flash('No record of your e-mail address in our database. Kindly register with us.', category='danger')
             return redirect(url_for('register'))
@@ -175,7 +193,6 @@ def create_advert():
         if barcode_check:
             flash(f'An item with the barcode {barcode_check.barcode} already exists. Kindly re-confirm the barcode.', category='danger')
         else:
-            try:
                 item_to_create = Item(
                     name=form.name.data,
                     price=form.price.data,
@@ -186,25 +203,29 @@ def create_advert():
                 db.session.add(item_to_create)
                 db.session.commit()
 
-                msg = Message(
-                    subject="Notice of Advert Placement",
-                    sender='noreply@ecommerce.com',
-                    recipients=[current_user.email_address]
-                )
-                msg.html = f"""<p>Hello {current_user.username}, Congratulations, Your Advert has been Successfully Placed on the Market. Please be informed that your commodity might be taken down if any fraudulent activity is discovered.
-                        Kindly note that this is a virtually generated e-mail address and we can't be contacted through this medium. To message us, send us
-                        an email on festusmike30@yahoo.com. Thank You.</p>"""
-
-                # Send the email
-                mail.send(msg)
-            except Exception as e:
-                
-                app.logger.error(f"Error sending advert placement email to {current_user.email_address}: {str(e)}")
-                flash("An error occurred while sending the advert placement email. Please contact support.", category='danger')
-
-            flash('Your advert has been successfully placed.', category='success')
-            return redirect(url_for('market_page'))
-
+                try:
+                    # Set up Sendinblue API configuration
+                    configuration = sib_api_v3_sdk.Configuration()
+                    configuration.api_key['api-key'] = os.environ.get('EMAIL_API_KEY')
+                    # Create an instance of the Sendinblue TransactionalEmailsApi
+                    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+                    # Define email parameters
+                    subject = "Notice of Advert Placement!"
+                    sender = {"name" : 'Mini Market', "email": os.environ.get('EMAIL_SENDER')}
+                    reply_to = {"email": os.environ.get('EMAIL_REPLY_TO')}
+                    html_content =  f"""<h2>Hello {current_user.username},</h2> <p> Congratulations, Your Advert has been Successfully Placed on the Market. 
+                    Please be informed that your commodity might be taken down if any fraudulent activity is discovered.
+                    To contact us, send us an email on festusmike98@gmail.com. Thank You.</p>"""
+                    to = [{"email": current_user.email_address, "name": current_user.username}]
+                    #   Create an instance of SendSmtpEmail
+                    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=to, reply_to=reply_to, html_content=html_content, sender=sender, subject=subject)
+                    # Send the transactional email
+                    api_response = api_instance.send_transac_email(send_smtp_email)
+                    print(api_response)
+                    flash('Your advert has been successfully placed.', category='success')
+                    return redirect(url_for('market_page'))
+                except ApiException as e:
+                    print("Exception when calling SMTPApi->send_transac_email: %s\n" % e)
     return render_template('create_advert.html', form=form)
 
 @app.route('/market', methods=['GET', 'POST'])
